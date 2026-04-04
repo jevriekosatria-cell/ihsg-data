@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Developer Panel — IHSG Screener</title>
+<script src="./auth_check.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--bg:#07090f;--card:#0d1117;--border:rgba(0,200,255,.12);--cyan:#00c8ff;--cyan2:rgba(0,200,255,.08);--text:#e0e0e0;--muted:#7a7a8a;--green:#00e5a0;--red:#ff3b5c;--yellow:#f5c542;--font:'Segoe UI',system-ui,sans-serif;--mono:'JetBrains Mono','Fira Code',monospace;}
+body{background:var(--bg);color:var(--text);font-family:var(--font);min-height:100vh;padding:24px 16px;}
+.container{max-width:860px;margin:0 auto;}
+.header{display:flex;align-items:center;justify-content:space-between;margin-bottom:28px;padding-bottom:16px;border-bottom:1px solid var(--border);}
+.header-title{font-size:1.3rem;font-weight:700;color:var(--cyan);}
+.header-sub{font-size:.78rem;color:var(--muted);margin-top:3px;}
+.back-btn{padding:7px 16px;background:var(--cyan2);border:1px solid var(--border);border-radius:8px;color:var(--cyan);font-size:.82rem;font-weight:600;cursor:pointer;text-decoration:none;}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:20px;}
+@media(max-width:768px){
+  #dayColumnsGrid{grid-template-columns:1fr!important;}
+  .day-col{margin-bottom:8px;}
+}
+@media(max-width:600px){.grid{grid-template-columns:1fr;}}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:22px;}
+.card-title{font-size:.95rem;font-weight:700;color:var(--cyan);margin-bottom:4px;display:flex;align-items:center;gap:8px;}
+.card-desc{font-size:.75rem;color:var(--muted);margin-bottom:16px;line-height:1.6;}
+.stat{font-size:1.8rem;font-weight:700;color:var(--text);font-family:var(--mono);}
+.stat-label{font-size:.72rem;color:var(--muted);margin-top:2px;}
+.btn{display:inline-flex;align-items:center;gap:6px;padding:10px 18px;border-radius:8px;font-size:.85rem;font-weight:600;cursor:pointer;border:none;transition:all .15s;font-family:var(--font);}
+.btn-primary{background:linear-gradient(135deg,rgba(0,200,255,.2),rgba(0,229,160,.12));border:1px solid rgba(0,200,255,.3);color:var(--cyan);}
+.btn-primary:hover{background:linear-gradient(135deg,rgba(0,200,255,.3),rgba(0,229,160,.2));}
+.btn-danger{background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.2);color:var(--red);}
+.btn-danger:hover{background:rgba(255,59,92,.2);}
+.btn:disabled{opacity:.5;cursor:not-allowed;}
+.upload-area{border:2px dashed var(--border);border-radius:10px;padding:28px;text-align:center;cursor:pointer;transition:all .2s;position:relative;}
+.upload-area:hover,.upload-area.drag{border-color:var(--cyan);background:var(--cyan2);}
+.upload-area input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.upload-icon{font-size:2rem;margin-bottom:8px;}
+.upload-text{font-size:.85rem;color:var(--muted);}
+.upload-text b{color:var(--cyan);}
+.progress{height:6px;background:rgba(255,255,255,.06);border-radius:3px;margin-top:12px;overflow:hidden;display:none;}
+.progress-bar{height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));border-radius:3px;width:0%;transition:width .3s;}
+.msg{padding:10px 14px;border-radius:8px;font-size:.8rem;margin-top:10px;display:none;font-family:var(--mono);}
+.msg.ok{background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.3);color:var(--green);}
+.msg.err{background:rgba(255,59,92,.1);border:1px solid rgba(255,59,92,.3);color:var(--red);}
+.msg.info{background:var(--cyan2);border:1px solid var(--border);color:var(--cyan);}
+.log{background:#050810;border:1px solid var(--border);border-radius:8px;padding:14px;font-family:var(--mono);font-size:.72rem;color:#8a8a9a;max-height:200px;overflow-y:auto;margin-top:10px;display:none;}
+.log-line{margin-bottom:4px;line-height:1.5;}
+.log-line.ok{color:var(--green);}
+.log-line.err{color:var(--red);}
+.log-line.info{color:var(--cyan);}
+.table{width:100%;border-collapse:collapse;font-size:.78rem;}
+.table th{text-align:left;padding:8px 10px;color:var(--muted);font-weight:600;border-bottom:1px solid var(--border);font-family:var(--mono);}
+.table td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.04);color:var(--text);}
+.badge{padding:2px 8px;border-radius:4px;font-size:.68rem;font-weight:600;}
+.badge-ok{background:rgba(0,229,160,.1);color:var(--green);border:1px solid rgba(0,229,160,.2);}
+.badge-warn{background:rgba(245,197,66,.1);color:var(--yellow);border:1px solid rgba(245,197,66,.2);}
+
+/* ── MOBILE RESPONSIVE ── */
+@media(max-width:600px){
+  body{padding:14px 12px;}
+  
+  /* Header — stack vertikal di mobile */
+  .header{flex-direction:column;align-items:flex-start;gap:12px;margin-bottom:18px;}
+  .header-title{font-size:1.1rem;}
+  .header-r-btns{display:flex;gap:6px;width:100%;flex-wrap:wrap;}
+  .back-btn{font-size:.75rem;padding:6px 12px;flex:1;text-align:center;}
+
+  /* Stats — 3 kolom tetap tapi lebih compact */
+  .stat{font-size:1.3rem;}
+  .stat-label{font-size:.62rem;}
+  .card{padding:14px;}
+  .card-title{font-size:.85rem;}
+  .card-desc{font-size:.7rem;}
+
+  /* Analytics summary — 2 kolom di mobile */
+  .analytics-4col{grid-template-columns:1fr 1fr !important;}
+
+  /* Grid utama — 1 kolom */
+  .grid{grid-template-columns:1fr !important;}
+
+  /* Table scroll */
+  .table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .table{font-size:.7rem;}
+  .table th,.table td{padding:6px 8px;}
+
+  /* Buttons full width */
+  .btn{width:100%;justify-content:center;}
+
+  /* Textarea lebih kecil */
+  #devManualInput{font-size:.6rem !important;}
+}
+@media(max-width:400px){
+  /* Stats 3 kolom tetap, font lebih kecil */
+  .stat{font-size:1.1rem;}
+  .stat-grid{grid-template-columns:1fr 1fr 1fr !important;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <!-- Header -->
+  <div class="header">
+    <div>
+      <div class="header-title">⚙️ Developer Panel</div>
+      <div class="header-sub">IHSG Screener — Data Management</div>
+    </div>
+    <div class="header-r-btns">
+      <a href="./developer_stats.html" class="back-btn" style="background:rgba(0,229,160,.08);border-color:rgba(0,229,160,.2);color:#00e5a0;">📊 Analytics</a>
+      <a href="./index.html" class="back-btn">← Screener</a>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="grid stat-grid" style="grid-template-columns:repeat(3,1fr);margin-bottom:20px;">
+    <div class="card">
+      <div class="stat" id="stat-saham">—</div>
+      <div class="stat-label">Total Saham</div>
+    </div>
+    <div class="card">
+      <div class="stat" id="stat-update">—</div>
+      <div class="stat-label">Update Terakhir</div>
+    </div>
+    <div class="card">
+      <div class="stat" id="stat-source">—</div>
+      <div class="stat-label">Sumber Data</div>
+    </div>
+  </div>
+
+  <div class="grid">
+
+    <!-- Analytics quick summary -->
+  <div class="card" style="margin-bottom:0;cursor:pointer;grid-column:1/-1;" onclick="window.location.href='./developer_stats.html'">
+    <div class="card-title">📊 Visitor Analytics <span style="font-size:.65rem;color:var(--muted);font-weight:400;margin-left:8px;">klik untuk detail →</span></div>
+    <div class="analytics-4col" style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:12px;" id="analytics-summary">
+      <div><div style="font-size:.6rem;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">TOTAL HITS</div><div style="font-size:1.4rem;font-weight:700;color:var(--cyan);font-family:var(--mono);" id="an-total">—</div></div>
+      <div><div style="font-size:.6rem;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">UNIQUE VISITOR</div><div style="font-size:1.4rem;font-weight:700;color:#00e5a0;font-family:var(--mono);" id="an-uniq">—</div></div>
+      <div><div style="font-size:.6rem;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">HARI INI</div><div style="font-size:1.4rem;font-weight:700;color:#f5c518;font-family:var(--mono);" id="an-today">—</div></div>
+      <div><div style="font-size:.6rem;color:var(--muted);letter-spacing:1px;margin-bottom:4px;">7 HARI</div><div style="font-size:1.4rem;font-weight:700;color:#9d78ff;font-family:var(--mono);" id="an-week">—</div></div>
+    </div>
+  </div>
+
+  <!-- Upload XLSX -->
+    <div class="card">
+      <div class="card-title">📤 Upload Data IDX</div>
+      <div class="card-desc">Upload file XLSX dari IDX Screener. Data fundamental (DER dll) diambil dari IDX, harga & PER/PBV/ROE diambil dari Yahoo Finance otomatis.</div>
+      <div class="upload-area" id="drop-area">
+        <input type="file" id="xlsx-input" accept=".xlsx">
+        <div class="upload-icon">📊</div>
+        <div class="upload-text">Drop file XLSX di sini atau <b>klik untuk pilih</b></div>
+        <div class="upload-text" style="font-size:.7rem;margin-top:4px;">IDX-Stock-Screener-*.xlsx</div>
+      </div>
+      <div class="progress" id="upload-progress"><div class="progress-bar" id="upload-bar"></div></div>
+      <div class="msg" id="upload-msg"></div>
+      <div class="log" id="upload-log"></div>
+    </div>
+
+    <!-- Update Harga -->
+    <!-- Update DER Only -->
+    <div class="card" style="border-color:rgba(245,200,66,.3);">
+      <div class="card-title" style="color:var(--yellow);">🛡️ Update DER Saja (Aman)</div>
+      <div class="card-desc">Upload XLSX IDX untuk update <strong>hanya kolom DER</strong>. Field lain (ROE, ROA, NPM, harga, PER, PBV) <strong>tidak akan disentuh</strong>. Gunakan ini daripada Upload Data IDX jika hanya ingin update DER.</div>
+      <div style="background:rgba(245,200,66,.08);border:1px solid rgba(245,200,66,.2);border-radius:8px;padding:9px 12px;margin-bottom:12px;font-family:var(--mono);font-size:.62rem;color:var(--yellow);">
+        ⚠️ Gunakan <strong>ini</strong> untuk update DER — bukan "Upload Data IDX" di atas yang bisa menghapus ROE/ROA/NPM.
+      </div>
+      <div class="drop-zone" id="derDropZone" onclick="document.getElementById('derFile').click()"
+           ondragover="event.preventDefault();this.classList.add('drag-over')"
+           ondrop="event.preventDefault();this.classList.remove('drag-over');handleDerUpload(event.dataTransfer.files[0])">
+        📊<br>Drop file XLSX di sini atau klik untuk pilih<br>
+        <span style="font-size:.65rem;opacity:.6;">IDX-Stock-Screener-*.xlsx</span>
+      </div>
+      <input type="file" id="derFile" accept=".xlsx" style="display:none"
+             onchange="handleDerUpload(this.files[0])">
+      <div class="msg" id="der-msg"></div>
+      <div class="log" id="der-log" style="display:none;"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">🔄 Update Harga & Fundamental</div>
+      <div class="card-desc">Update harga real-time, PER, PBV, ROE, ROA, NPM, EPS dari Yahoo Finance tanpa perlu re-upload file XLSX.</div>
+      <button class="btn btn-primary" onclick="doEnrich()" id="btn-enrich">
+        🔄 Update Sekarang
+      </button>
+      <div style="margin-top:10px;font-size:.72rem;color:var(--muted);">
+        Atau akses langsung:<br>
+        <span style="font-family:var(--mono);color:var(--cyan);font-size:.68rem;">
+          /import_idx.php?action=enrich
+        </span>
+      </div>
+      <div class="msg" id="enrich-msg"></div>
+      <div class="log" id="enrich-log"></div>
+    </div>
+
+        <!-- Multi-Hari ARA Input -->
+    <div class="card" style="grid-column:1/-1;">
+      <div class="card-title">📡 Data IDX Real-Time — Multi Hari</div>
+      <div class="card-desc">Paste JSON IDX per hari → Analisis 1, 2, atau 3 hari → Save ke server agar semua user bisa lihat.<br>
+        <span style="color:var(--yellow);font-size:.68rem;">Data tersimpan otomatis di browser. Hari ke-4 masuk → Hari ke-1 otomatis hilang.</span>
+      </div>
+
+      <!-- 3 Kolom Input -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:12px;" id="dayColumnsGrid">
+        
+        <!-- Hari 1 -->
+        <div class="day-col" id="dayCol1">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-family:var(--mono);font-size:.65rem;color:var(--cyan);font-weight:700;">📅 HARI 1 <span id="dayLabel1" style="color:var(--muted);font-weight:400;"></span></div>
+            <div style="display:flex;gap:4px;">
+              <a id="idxLink1" href="#" target="_blank" style="font-size:.55rem;color:var(--cyan);border:1px solid var(--border);border-radius:4px;padding:2px 6px;text-decoration:none;">🔗 IDX</a>
+              <button onclick="clearDay(1)" style="font-size:.55rem;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 6px;cursor:pointer;">✕</button>
+            </div>
+          </div>
+          <textarea id="dayInput1" placeholder="Paste JSON IDX Hari 1…"
+            style="width:100%;height:100px;background:#050810;border:1px solid rgba(0,200,255,.12);border-radius:6px;color:#e0e0e0;font-family:var(--mono);font-size:.58rem;padding:8px;resize:vertical;outline:none;box-sizing:border-box;"
+            onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor=hasData(1)?'rgba(0,229,160,.3)':'rgba(0,200,255,.12)'"
+            oninput="onDayInput(1)" onpaste="setTimeout(()=>onDayInput(1),10)"></textarea>
+          <div id="dayStatus1" style="font-family:var(--mono);font-size:.55rem;margin-top:4px;min-height:16px;"></div>
+          <button onclick="saveDay(1)" id="btnSaveDay1" disabled
+            style="margin-top:6px;width:100%;padding:6px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);border-radius:6px;color:var(--green);font-size:.65rem;cursor:pointer;font-family:var(--mono);">
+            💾 Save Hari 1
+          </button>
+        </div>
+
+        <!-- Hari 2 -->
+        <div class="day-col" id="dayCol2">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-family:var(--mono);font-size:.65rem;color:var(--cyan);font-weight:700;">📅 HARI 2 <span id="dayLabel2" style="color:var(--muted);font-weight:400;"></span></div>
+            <div style="display:flex;gap:4px;">
+              <a id="idxLink2" href="#" target="_blank" style="font-size:.55rem;color:var(--cyan);border:1px solid var(--border);border-radius:4px;padding:2px 6px;text-decoration:none;">🔗 IDX</a>
+              <button onclick="clearDay(2)" style="font-size:.55rem;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 6px;cursor:pointer;">✕</button>
+            </div>
+          </div>
+          <textarea id="dayInput2" placeholder="Paste JSON IDX Hari 2…"
+            style="width:100%;height:100px;background:#050810;border:1px solid rgba(0,200,255,.12);border-radius:6px;color:#e0e0e0;font-family:var(--mono);font-size:.58rem;padding:8px;resize:vertical;outline:none;box-sizing:border-box;"
+            onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor=hasData(2)?'rgba(0,229,160,.3)':'rgba(0,200,255,.12)'"
+            oninput="onDayInput(2)" onpaste="setTimeout(()=>onDayInput(2),10)"></textarea>
+          <div id="dayStatus2" style="font-family:var(--mono);font-size:.55rem;margin-top:4px;min-height:16px;"></div>
+          <button onclick="saveDay(2)" id="btnSaveDay2" disabled
+            style="margin-top:6px;width:100%;padding:6px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);border-radius:6px;color:var(--green);font-size:.65rem;cursor:pointer;font-family:var(--mono);">
+            💾 Save Hari 2
+          </button>
+        </div>
+
+        <!-- Hari 3 -->
+        <div class="day-col" id="dayCol3">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+            <div style="font-family:var(--mono);font-size:.65rem;color:var(--cyan);font-weight:700;">📅 HARI 3 <span id="dayLabel3" style="color:var(--muted);font-weight:400;"></span></div>
+            <div style="display:flex;gap:4px;">
+              <a id="idxLink3" href="#" target="_blank" style="font-size:.55rem;color:var(--cyan);border:1px solid var(--border);border-radius:4px;padding:2px 6px;text-decoration:none;">🔗 IDX</a>
+              <button onclick="clearDay(3)" style="font-size:.55rem;color:var(--muted);background:none;border:1px solid var(--border);border-radius:4px;padding:2px 6px;cursor:pointer;">✕</button>
+            </div>
+          </div>
+          <textarea id="dayInput3" placeholder="Paste JSON IDX Hari 3…"
+            style="width:100%;height:100px;background:#050810;border:1px solid rgba(0,200,255,.12);border-radius:6px;color:#e0e0e0;font-family:var(--mono);font-size:.58rem;padding:8px;resize:vertical;outline:none;box-sizing:border-box;"
+            onfocus="this.style.borderColor='var(--cyan)'" onblur="this.style.borderColor=hasData(3)?'rgba(0,229,160,.3)':'rgba(0,200,255,.12)'"
+            oninput="onDayInput(3)" onpaste="setTimeout(()=>onDayInput(3),10)"></textarea>
+          <div id="dayStatus3" style="font-family:var(--mono);font-size:.55rem;margin-top:4px;min-height:16px;"></div>
+          <button onclick="saveDay(3)" id="btnSaveDay3" disabled
+            style="margin-top:6px;width:100%;padding:6px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);border-radius:6px;color:var(--green);font-size:.65rem;cursor:pointer;font-family:var(--mono);">
+            💾 Save Hari 3
+          </button>
+        </div>
+      </div>
+
+      <!-- Tombol Aksi Utama -->
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button onclick="analyzeAll()" id="btnAnalyzeAll"
+          style="flex:2;padding:10px;background:linear-gradient(135deg,rgba(0,200,255,.2),rgba(0,229,160,.12));border:1px solid rgba(0,200,255,.3);border-radius:8px;color:var(--cyan);font-size:.8rem;font-weight:700;cursor:pointer;font-family:var(--mono);">
+          🔍 Analisis All
+        </button>
+        <button onclick="saveAll()" id="btnSaveAll"
+          style="flex:2;padding:10px;background:rgba(0,229,160,.1);border:1px solid rgba(0,229,160,.25);border-radius:8px;color:var(--green);font-size:.8rem;font-weight:700;cursor:pointer;font-family:var(--mono);" disabled>
+          💾 Save All → Publish ke User
+        </button>
+        <button onclick="confirmResetIDX()"
+          style="flex:1;padding:10px;background:rgba(255,59,92,.08);border:1px solid rgba(255,59,92,.2);border-radius:8px;color:var(--red);font-size:.75rem;cursor:pointer;font-family:var(--mono);">
+          🗑️ Reset
+        </button>
+      </div>
+
+      <div class="msg" id="devSaveMsg"></div>
+      <div class="log" id="devLog"></div>
+
+      <!-- Confirm Reset -->
+      <div id="resetConfirmBox" style="display:none;margin-top:10px;background:rgba(255,59,92,.06);border:1px solid rgba(255,59,92,.25);border-radius:10px;padding:14px;">
+        <div style="font-family:var(--mono);font-size:.72rem;color:var(--red);font-weight:700;margin-bottom:6px;">⚠️ Konfirmasi Reset</div>
+        <div style="font-family:var(--mono);font-size:.65rem;color:var(--muted);margin-bottom:12px;line-height:1.7;">
+          Semua data ARA akan dihapus dari server dan browser.<br>
+          <span style="color:var(--yellow);">User akan lihat pesan "Data belum tersedia".</span>
+        </div>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-danger" onclick="doResetIDX()" style="flex:1;justify-content:center;">🗑️ Ya, Reset</button>
+          <button class="btn" onclick="cancelResetIDX()" style="flex:1;justify-content:center;background:var(--cyan2);border:1px solid var(--border);color:var(--cyan);">Batal</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+
+  <!-- Delisting Management -->
+  <div class="card" style="margin-bottom:16px;border-color:rgba(255,59,92,.3);">
+    <div class="card-title" style="color:var(--red);">🚫 Manajemen Delisting Global</div>
+    <div class="card-desc">Saham yang ditambahkan di sini akan <strong>otomatis diblokir untuk semua user</strong> — tidak tampil di screener siapapun. Gunakan untuk saham yang sudah delisting dari IDX.</div>
+
+    <div style="display:flex;gap:8px;margin-bottom:10px;">
+      <input id="delistInput" class="inp" placeholder="Kode saham (contoh: XYZQ)" maxlength="6"
+             style="flex:1;text-transform:uppercase;"
+             onkeydown="if(event.key==='Enter') delistAdd()">
+      <button class="btn" onclick="delistAdd()"
+              style="background:rgba(255,59,92,.12);border-color:rgba(255,59,92,.3);color:var(--red);">
+        🚫 Block
+      </button>
+    </div>
+
+    <div id="delistTags" style="display:flex;flex-wrap:wrap;gap:5px;min-height:30px;margin-bottom:8px;">
+      <span style="font-family:var(--mono);font-size:.58rem;color:var(--dim);">Memuat...</span>
+    </div>
+
+    <div class="msg" id="delistMsg"></div>
+  </div>
+
+  <!-- Users -->
+  <div class="card" style="margin-bottom:20px;">
+    <div class="card-title" style="margin-bottom:12px;">👥 Daftar User Terdaftar</div>
+    <div class="table-wrap"><div id="users-table">
+      <div style="color:var(--muted);font-size:.8rem;">Memuat...</div>
+    </div></div>
+  </div>
+
+</div>
+
+<script>
+// ── Cek akses developer (langsung fetch, tidak bergantung auth_check.js) ──
+const DEVELOPER_EMAILS = ['jevriekosatria@gmail.com'];
+
+document.addEventListener('DOMContentLoaded', async () => {
+  // Init UI dulu sebelum auth, agar tombol tidak terkunci permanen
+  initIDXLinks();
+  loadFromLocalStorage();
+  updateAnalyzeBtn();
+
+  try {
+    const res  = await fetch('./auth.php?action=me', { credentials: 'include' });
+    const json = await res.json();
+
+    if (!json.ok) {
+      window.location.href = './login.html';
+      return;
+    }
+
+    if (!DEVELOPER_EMAILS.includes(json.user.email)) {
+      alert('Akses ditolak!');
+      window.location.href = './index.html';
+      return;
+    }
+
+    document.querySelector('.header-sub').textContent =
+      'Login sebagai: ' + json.user.username + ' (' + json.user.email + ')';
+
+    loadStats();
+    loadUsers();
+    loadAnalytics();
+    delistLoad();
+
+  } catch(e) {
+    alert('Gagal verifikasi akses: ' + e.message);
+    window.location.href = './index.html';
+  }
+});
+
+// ── Load stats ───────────────────────────────────────────────
+async function loadStats() {
+  try {
+    const res = await fetch('./import_idx.php?action=status');
+    const j   = await res.json();
+    if (j.status === 'ok') {
+      document.getElementById('stat-saham').textContent   = j.total?.toLocaleString('id-ID') || '—';
+      const upd = j.updated ? new Date(j.updated).toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '—';
+      document.getElementById('stat-update').textContent  = upd;
+      document.getElementById('stat-source').textContent  = 'IDX+YF';
+    }
+  } catch(e) {}
+}
+
+// ── Upload XLSX ──────────────────────────────────────────────
+document.getElementById('xlsx-input').addEventListener('change', function() {
+  if (this.files[0]) doUpload(this.files[0]);
+});
+
+const dropArea = document.getElementById('drop-area');
+dropArea.addEventListener('dragover',  e => { e.preventDefault(); dropArea.classList.add('drag'); });
+dropArea.addEventListener('dragleave', () => dropArea.classList.remove('drag'));
+dropArea.addEventListener('drop', e => {
+  e.preventDefault(); dropArea.classList.remove('drag');
+  const file = e.dataTransfer.files[0];
+  if (file && file.name.endsWith('.xlsx')) doUpload(file);
+  else showMsg('upload-msg', 'Hanya file .xlsx yang diterima', 'err');
+});
+
+async function doUpload(file) {
+  const msgEl  = document.getElementById('upload-msg');
+  const logEl  = document.getElementById('upload-log');
+  const prog   = document.getElementById('upload-progress');
+  const bar    = document.getElementById('upload-bar');
+
+  showMsg('upload-msg', '⏳ Mengupload ' + file.name + ' ...', 'info');
+  prog.style.display = 'block'; bar.style.width = '20%';
+  logEl.style.display = 'block'; logEl.innerHTML = '';
+  addLog('upload-log', 'Mengupload file: ' + file.name, 'info');
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('enrich', '1');
+    bar.style.width = '40%';
+
+    const res  = await fetch('./import_idx.php', { method:'POST', body:fd });
+    bar.style.width = '80%';
+    const json = await res.json();
+    bar.style.width = '100%';
+
+    if (json.ok) {
+      showMsg('upload-msg', '✅ ' + json.parsed + ' saham diimport. ' + (json.enrich?.msg||''), 'ok');
+      addLog('upload-log', '✅ Parse: ' + json.parsed + ' saham', 'ok');
+      addLog('upload-log', '✅ Enrich: ' + (json.enrich?.msg||'-'), 'ok');
+      addLog('upload-log', '✅ Batches: ' + JSON.stringify(json.enrich?.batches||{}), 'info');
+      loadStats();
+    } else {
+      showMsg('upload-msg', '❌ ' + json.msg, 'err');
+      addLog('upload-log', '❌ ' + json.msg, 'err');
+    }
+  } catch(e) {
+    showMsg('upload-msg', '❌ Error: ' + e.message, 'err');
+    addLog('upload-log', '❌ ' + e.message, 'err');
+  }
+  setTimeout(() => { prog.style.display='none'; bar.style.width='0%'; }, 2000);
+}
+
+// ── Enrich harga ─────────────────────────────────────────────
+async function doEnrich() {
+  const btn = document.getElementById('btn-enrich');
+  btn.disabled = true; btn.textContent = '⏳ Mengupdate...';
+  showMsg('enrich-msg', '⏳ Mengambil data dari Yahoo Finance...', 'info');
+  document.getElementById('enrich-log').style.display = 'block';
+  document.getElementById('enrich-log').innerHTML = '';
+  addLog('enrich-log', 'Menghubungi Yahoo Finance...', 'info');
+
+  try {
+    const res  = await fetch('./import_idx.php?action=enrich');
+    const json = await res.json();
+    if (json.ok) {
+      showMsg('enrich-msg', '✅ ' + json.enrich?.msg, 'ok');
+      addLog('enrich-log', '✅ ' + json.enrich?.msg, 'ok');
+      addLog('enrich-log', 'Batches: ok=' + json.enrich?.batches?.ok + ' fail=' + json.enrich?.batches?.fail, 'info');
+      loadStats();
+    } else {
+      showMsg('enrich-msg', '❌ ' + json.msg, 'err');
+      addLog('enrich-log', '❌ ' + json.msg, 'err');
+    }
+  } catch(e) {
+    showMsg('enrich-msg', '❌ ' + e.message, 'err');
+  }
+  btn.disabled = false; btn.textContent = '🔄 Update Sekarang';
+}
+
+// ── Load analytics summary ──────────────────────────────────
+async function loadAnalytics() {
+  try {
+    const res  = await fetch('./tracker.php?action=stats', {credentials:'include'});
+    const j    = await res.json();
+    if (!j.ok) return;
+    document.getElementById('an-total').textContent = Number(j.total.hits).toLocaleString('id-ID');
+    document.getElementById('an-uniq').textContent  = Number(j.total.uniq).toLocaleString('id-ID');
+    document.getElementById('an-today').textContent = Number(j.today.uniq).toLocaleString('id-ID');
+    document.getElementById('an-week').textContent  = Number(j.week.uniq).toLocaleString('id-ID');
+  } catch(e) {}
+}
+
+// ── Load users ───────────────────────────────────────────────
+async function loadUsers() {
+  try {
+    const res  = await fetch('./api_user.php?action=list_users', { credentials:'include' });
+    const json = await res.json();
+    if (!json.ok || !json.users) return;
+
+    const rows = json.users.map(u => `
+      <tr>
+        <td>${u.id}</td>
+        <td style="font-weight:600;">${u.username}</td>
+        <td style="color:var(--muted);">${u.email}</td>
+        <td>${u.created_at ? new Date(u.created_at).toLocaleDateString('id-ID') : '—'}</td>
+        <td>${u.last_login ? new Date(u.last_login).toLocaleDateString('id-ID') : '—'}</td>
+        <td><span class="badge badge-ok">aktif</span></td>
+      </tr>`).join('');
+
+    document.getElementById('users-table').innerHTML = `
+      <table class="table">
+        <thead><tr>
+          <th>ID</th><th>Username</th><th>Email</th>
+          <th>Daftar</th><th>Login Terakhir</th><th>Status</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <div style="margin-top:8px;font-size:.72rem;color:var(--muted);">
+        Total: ${json.users.length} user terdaftar
+      </div>`;
+  } catch(e) {
+    document.getElementById('users-table').innerHTML = '<div style="color:var(--muted);font-size:.8rem;">Gagal memuat data user</div>';
+  }
+}
+
+// ══════════════════════════════════════════════════════════
+// MULTI-HARI ARA SYSTEM
+// ══════════════════════════════════════════════════════════
+
+const STORAGE_KEY = 'ihsg_ara_days_v2';
+const DEV_EMAILS  = ['jevriekosatria@gmail.com'];
+
+// ── Data structure per hari ──────────────────────────────
+// { day: 1|2|3, date: 'YYYY-MM-DD', data: [...], parsed: true }
+let dayData = { 1: null, 2: null, 3: null };
+
+// ── Load dari localStorage saat halaman dibuka ───────────
+function loadFromLocalStorage() {
+  try {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (!saved) return;
+    const parsed = JSON.parse(saved);
+    dayData = parsed;
+    // Restore textarea dan status
+    [1, 2, 3].forEach(d => {
+      if (dayData[d]) {
+        const ta = document.getElementById('dayInput' + d);
+        const statusEl = document.getElementById('dayStatus' + d);
+        const saveBtn = document.getElementById('btnSaveDay' + d);
+        const label = document.getElementById('dayLabel' + d);
+        if (ta) {
+          ta.style.borderColor = 'rgba(0,229,160,.3)';
+          // Restore isi textarea dari raw JSON yang disimpan
+          if (dayData[d].raw) ta.value = dayData[d].raw;
+        }
+        if (statusEl) statusEl.innerHTML = `<span style="color:var(--green);">✅ ${dayData[d].count} saham · ${dayData[d].date}</span>`;
+        if (saveBtn) saveBtn.disabled = false;
+        if (label) label.textContent = dayData[d].date ? `(${dayData[d].date})` : '';
+      }
+    });
+    updateAnalyzeBtn();
+    addLog('devLog', '📂 Data tersimpan dimuat: ' + Object.values(dayData).filter(Boolean).length + ' hari', 'info');
+  } catch(e) {}
+}
+
+// ── Simpan ke localStorage ───────────────────────────────
+function saveToLocalStorage() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(dayData));
+  } catch(e) {
+    addLog('devLog', '⚠ localStorage penuh, data tidak tersimpan lokal', 'err');
+  }
+}
+
+// ── Generate IDX links ────────────────────────────────────
+function initIDXLinks() {
+  const today = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  
+  // Buat link untuk 3 hari kerja terakhir (tidak termasuk hari ini jika belum closing)
+  // Cek jam WIB: jika belum jam 16:00 WIB (09:00 UTC), pakai data kemarin ke belakang
+  const nowWIB = new Date(today.getTime() + 7*60*60*1000);
+  const hourWIB = nowWIB.getUTCHours();
+  let startDate = new Date(today);
+  // Kalau belum closing (< 16:30 WIB = < 09:30 UTC), mundur 1 hari
+  if (hourWIB < 10) startDate.setDate(startDate.getDate() - 1);
+  
+  let tradingDays = [];
+  let d = new Date(startDate);
+  while (tradingDays.length < 3) {
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) { // bukan weekend
+      tradingDays.push(new Date(d));
+    }
+    d.setDate(d.getDate() - 1);
+  }
+  tradingDays.reverse(); // hari paling lama dulu
+
+  tradingDays.forEach((td, i) => {
+    const ds = `${td.getFullYear()}-${pad(td.getMonth()+1)}-${pad(td.getDate())}`;
+    const url = `https://idx.co.id/primary/TradingSummary/GetStockSummary?startDate=${ds}&endDate=${ds}&draw=1&start=0&length=1000`;
+    const linkEl = document.getElementById('idxLink' + (i+1));
+    const labelEl = document.getElementById('dayLabel' + (i+1));
+    if (linkEl) { linkEl.href = url; linkEl.title = ds; }
+    if (labelEl && !dayData[i+1]) labelEl.textContent = `(${ds})`;
+    // Simpan tanggal default untuk tiap kolom
+    if (!window._defaultDates) window._defaultDates = {};
+    window._defaultDates[i+1] = ds;
+  });
+  window._idxTargetDate = tradingDays[2] ? 
+    `${tradingDays[2].getFullYear()}-${pad(tradingDays[2].getMonth()+1)}-${pad(tradingDays[2].getDate())}` : 
+    `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+}
+
+// ── Cek apakah hari X sudah ada data ────────────────────
+function hasData(day) {
+  return !!(dayData[day] && dayData[day].count > 0);
+}
+
+// ── Update state tombol Analisis All ──────────────────────
+function updateAnalyzeBtn() {
+  const filledDays = [1,2,3].filter(d => hasData(d));
+  const btn = document.getElementById('btnAnalyzeAll');
+  if (btn) {
+    btn.disabled = filledDays.length === 0;
+    btn.textContent = filledDays.length > 0 
+      ? `🔍 Analisis ${filledDays.length} Hari (${filledDays.map(d=>'H'+d).join('+')})` 
+      : '🔍 Analisis All (paste data dulu)';
+  }
+}
+
+// ── Event: input di textarea ─────────────────────────────
+function onDayInput(day) {
+  const ta = document.getElementById('dayInput' + day);
+  const statusEl = document.getElementById('dayStatus' + day);
+  const saveBtn = document.getElementById('btnSaveDay' + day);
+  const val = ta.value.trim();
+  
+  if (!val) {
+    if (statusEl) statusEl.innerHTML = '';
+    if (saveBtn) saveBtn.disabled = true;
+    return;
+  }
+  
+  // Quick validation + enable save button
+  try {
+    const j = JSON.parse(val);
+    const count = j.data?.length || 0;
+    if (count === 0) throw new Error('Data kosong');
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--yellow);">📋 ${count} saham · klik Save Hari ${day}</span>`;
+    if (saveBtn) saveBtn.disabled = false; // ← enable tombol save!
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red);">❌ Format tidak valid — pastikan copy semua JSON dari IDX</span>`;
+    if (saveBtn) saveBtn.disabled = true;
+  }
+}
+
+// ── Save data 1 hari ke memory + localStorage ────────────
+function saveDay(day) {
+  const ta = document.getElementById('dayInput' + day);
+  const statusEl = document.getElementById('dayStatus' + day);
+  const saveBtn = document.getElementById('btnSaveDay' + day);
+  const labelEl = document.getElementById('dayLabel' + day);
+  
+  try {
+    const raw = ta.value.trim();
+    if (!raw) throw new Error('Textarea kosong');
+    const j = JSON.parse(raw);
+    if (!j.data || !j.data.length) throw new Error('Data kosong');
+    
+    const date = window._defaultDates?.[day] || new Date().toISOString().slice(0,10);
+    
+    // Rolling system: jika save hari 3, geser 1→hapus, 2→1, 3→2, baru→3
+    // Tapi hanya jika kolom ini sudah terisi sebelumnya DAN tanggal berbeda
+    if (dayData[day] && dayData[day].date !== date) {
+      addLog('devLog', `↻ Rolling: Hari ${day} diganti data baru`, 'info');
+    }
+    
+    dayData[day] = {
+      day,
+      date,
+      count: j.data.length,
+      data: j.data, // simpan raw data
+      raw,          // simpan raw string untuk restore textarea
+    };
+    
+    saveToLocalStorage();
+    
+    ta.style.borderColor = 'rgba(0,229,160,.3)';
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--green);">✅ ${j.data.length} saham tersimpan · ${date}</span>`;
+    if (saveBtn) { saveBtn.textContent = '✅ Tersimpan'; saveBtn.disabled = true; setTimeout(() => { saveBtn.textContent = '💾 Save Hari '+day; saveBtn.disabled = false; }, 2000); }
+    if (labelEl) labelEl.textContent = `(${date})`;
+    
+    updateAnalyzeBtn();
+    addLog('devLog', `✅ Hari ${day}: ${j.data.length} saham disimpan (${date})`, 'ok');
+  } catch(e) {
+    if (statusEl) statusEl.innerHTML = `<span style="color:var(--red);">❌ ${e.message}</span>`;
+    addLog('devLog', `❌ Hari ${day}: ${e.message}`, 'err');
+  }
+}
+
+// ── Clear 1 kolom ────────────────────────────────────────
+function clearDay(day) {
+  dayData[day] = null;
+  saveToLocalStorage();
+  const ta = document.getElementById('dayInput' + day);
+  const statusEl = document.getElementById('dayStatus' + day);
+  const saveBtn = document.getElementById('btnSaveDay' + day);
+  const labelEl = document.getElementById('dayLabel' + day);
+  if (ta) { ta.value = ''; ta.style.borderColor = 'rgba(0,200,255,.12)'; }
+  if (statusEl) statusEl.innerHTML = '';
+  if (saveBtn) saveBtn.disabled = true;
+  if (labelEl) labelEl.textContent = window._defaultDates?.[day] ? `(${window._defaultDates[day]})` : '';
+  updateAnalyzeBtn();
+  addLog('devLog', `🗑️ Hari ${day} dihapus`, 'info');
+}
+
+// ── KALKULASI ARA (sama dengan FINAL_ARA_DETECTOR) ───────
+function calculateARAScore(stock) {
+  const prev = stock.Previous || stock.Close || 0;
+  const close = stock.Close || 0;
+  const changePercent = prev > 0 ? ((close - prev) / prev * 100) : 0;
+  const foreignBuy  = stock.ForeignBuy || 0;
+  const foreignSell = stock.ForeignSell || 0;
+  const netForeignVal = (foreignBuy - foreignSell) * close / 1_000_000;
+
+  // Momentum (10%)
+  let momentumScore = 0;
+  if (changePercent > 0 && changePercent < 1)       momentumScore = 10;
+  else if (changePercent <= 0 && changePercent >= -1) momentumScore = 8;
+  else if (changePercent >= 1 && changePercent < 3)   momentumScore = 6;
+  else if (changePercent >= 3 && changePercent < 5)   momentumScore = 3;
+  else if (changePercent >= 5)                        momentumScore = 0;
+  else if (changePercent < -1 && changePercent >= -3) momentumScore = 5;
+  else if (changePercent < -3)                        momentumScore = 2;
+  else                                                momentumScore = 4;
+
+  // Volume (30%)
+  const volume = stock.Volume || 0;
+  let volumeScore = 0;
+  if (volume > 150_000_000)      volumeScore = 30;
+  else if (volume > 100_000_000) volumeScore = 28;
+  else if (volume > 50_000_000)  volumeScore = 24;
+  else if (volume > 25_000_000)  volumeScore = 20;
+  else if (volume > 10_000_000)  volumeScore = 15;
+  else if (volume > 5_000_000)   volumeScore = 10;
+  else if (volume > 1_000_000)   volumeScore = 5;
+  else                           volumeScore = 2;
+
+  // Akumulasi Asing (50%)
+  let foreignScore = 0;
+  if (netForeignVal > 150)      foreignScore = 50;
+  else if (netForeignVal > 100) foreignScore = 45;
+  else if (netForeignVal > 50)  foreignScore = 38;
+  else if (netForeignVal > 25)  foreignScore = 30;
+  else if (netForeignVal > 10)  foreignScore = 22;
+  else if (netForeignVal > 5)   foreignScore = 14;
+  else if (netForeignVal > 0)   foreignScore = 7;
+  else                          foreignScore = 0;
+
+  let total = momentumScore + volumeScore + foreignScore;
+
+  // Bonus Spread (±10)
+  const bid = stock.Bid || 0;
+  const offer = stock.Offer || 0;
+  const bidVol = stock.BidVolume || 0;
+  const offerVol = stock.OfferVolume || 0;
+  let bonus = 0;
+  let spreadPct = 0;
+
+  if (bid > 0 && offer > 0) {
+    spreadPct = ((offer - bid) / bid) * 100;
+    if (spreadPct < 1) bonus += 4;
+    else if (spreadPct > 5) bonus -= 4;
+    const totalOrder = bidVol + offerVol;
+    if (totalOrder > 0) {
+      const buySupport = bidVol / totalOrder;
+      if (buySupport > 0.6) bonus += 6;
+      else if (buySupport < 0.4) bonus -= 6;
+    }
+  }
+  bonus = Math.min(10, Math.max(-10, bonus));
+  total = Math.min(100, Math.max(0, total + bonus));
+
+  return {
+    score: Math.round(total),
+    isPotential: total > 60,
+    netForeignVal,
+    changePercent,
+    volume,
+    bid, offer, bidVol, offerVol,
+    spread: offer - bid,
+    spreadPct,
+    momentumScore, volumeScore, foreignScore, bonus
+  };
+}
+
+// ── ANALISIS ALL ─────────────────────────────────────────
+function analyzeAll() {
+  try {
+  const filledDays = [1,2,3].filter(d => hasData(d));
+  if (filledDays.length === 0) {
+    showMsg('devSaveMsg', '⚠ Paste dan save minimal 1 hari dulu', 'err'); return;
+  }
+
+  addLog('devLog', `🔍 Menganalisis ${filledDays.length} hari data...`, 'info');
+
+  // Proses setiap hari
+  const dayResults = {}; // { kode: { hari: {...} } }
+
+  filledDays.forEach(d => {
+    const raw = dayData[d].data;
+    raw.forEach(item => {
+      const kode = item.StockCode;
+      if (!kode) return;
+      
+      const prev  = item.Previous || item.Close || 0;
+      const close = item.Close || 0;
+      const fb = item.ForeignBuy || 0;
+      const fs = item.ForeignSell || 0;
+      const netM = (fb - fs) * close / 1_000_000;
+      const vol  = item.Volume || 0;
+      const chgPct = prev > 0 ? ((close - prev) / prev * 100) : 0;
+      const ara = calculateARAScore(item);
+
+      // FILTER SPREAD > 5% tidak masuk
+      if (ara.spreadPct > 5) return;
+
+      if (!dayResults[kode]) dayResults[kode] = { kode, nama: item.StockName || kode, days: {} };
+      dayResults[kode].days[d] = {
+        close, chgPct, vol, netM,
+        fb: fb / 1e6, fs: fs / 1e6,
+        araScore: ara.score, isPotential: ara.isPotential,
+        spread: ara.spread, spreadPct: ara.spreadPct,
+        bid: ara.bid, offer: ara.offer,
+        momentumScore: ara.momentumScore, volumeScore: ara.volumeScore, foreignScore: ara.foreignScore
+      };
+    });
+  });
+
+  // Hitung akumulasi & filter berdasarkan jumlah hari
+  const results = Object.values(dayResults).map(s => {
+    const daysPresent = Object.keys(s.days).map(Number).sort();
+    const dayCount = daysPresent.length;
+    
+    // Akumulasi net foreign dari semua hari
+    const totalNetM = daysPresent.reduce((sum, d) => sum + (s.days[d]?.netM || 0), 0);
+    
+    // Cek berapa hari net foreign positif berturut-turut
+    let consecutiveBuyDays = 0;
+    for (const d of daysPresent) {
+      if ((s.days[d]?.netM || 0) > 0) consecutiveBuyDays++;
+      else break; // harus berturut-turut dari hari pertama
+    }
+    
+    // ARA score rata-rata dari hari yang ada
+    const avgARA = daysPresent.reduce((sum, d) => sum + (s.days[d]?.araScore || 0), 0) / dayCount;
+    
+    // Data terbaru (hari terakhir yang ada)
+    const lastDay = daysPresent[daysPresent.length - 1];
+    const lastData = s.days[lastDay];
+
+    return {
+      kode: s.kode, nama: s.nama,
+      dayCount, daysPresent, consecutiveBuyDays,
+      totalNetM,
+      avgARA: Math.round(avgARA),
+      lastData, lastDay,
+      days: s.days,
+      // Filter: jika ada 2+ hari, harus minimal 1 hari net foreign positif berturut
+      isValid: filledDays.length === 1 
+        ? (s.days[filledDays[0]]?.isPotential && (s.days[filledDays[0]]?.netM || 0) > 0)
+        : (consecutiveBuyDays >= Math.min(2, filledDays.length) && totalNetM > 0 && avgARA >= 60),
+    };
+  }).filter(s => s.isValid);
+
+  // Sort by: totalNetM desc, lalu avgARA desc
+  results.sort((a, b) => b.totalNetM - a.totalNetM || b.avgARA - a.avgARA);
+
+  // Preview hasil di log
+  addLog('devLog', `✅ ${results.length} saham memenuhi kriteria (dari ${Object.keys(dayResults).length} saham dianalisis)`, 'ok');
+  results.slice(0, 5).forEach((s, i) => {
+    addLog('devLog', `  ${i+1}. ${s.kode} — Net: +${s.totalNetM.toFixed(1)}M (${s.consecutiveBuyDays}/${s.dayCount} hari) ARA: ${s.avgARA}%`, 'ok');
+  });
+
+  // Simpan hasil untuk save
+  // ── MOMENTUM DETECTOR — otomatis dari data IDX ────────────────
+  const _lastDay  = filledDays[filledDays.length - 1];
+  const _prevDay  = filledDays.length >= 2 ? filledDays[filledDays.length - 2] : null;
+  const _lastRaw  = dayData[_lastDay]?.data || [];
+
+  // Lookup hari sebelumnya
+  const _prevMap = {};
+  if (_prevDay) {
+    (dayData[_prevDay]?.data || []).forEach(s => {
+      const c = s.Close||0, fb2 = s.ForeignBuy||0, fs2 = s.ForeignSell||0;
+      const tot2 = fb2+fs2;
+      _prevMap[s.StockCode] = { netM:(fb2-fs2)*c/1e6, buyRatio:tot2>0?fb2/tot2:0 };
+    });
+  }
+
+  const _frac = c => c<200?1:c<500?2:c<2000?5:c<5000?10:25;
+  const _araC = [], _daytrade = [];
+
+  _lastRaw.forEach(s => {
+    const prev   = s.Previous    || 0;
+    const close  = s.Close       || 0;
+    const high   = s.High        || 0;
+    const listed = s.ListedShares|| 0;
+    const vol    = s.Volume      || 0;
+    const value  = s.Value       || 0;
+    const bid    = s.BidVolume   || 0;
+    const offer  = s.OfferVolume || 0;
+    const fb = s.ForeignBuy||0, fs = s.ForeignSell||0;
+    if (prev <= 0 || close < 51 || vol === 0) return;
+
+    const chgPct    = (close - prev) / prev * 100;
+    const netM      = (fb - fs) * close / 1e6;
+    const totalF    = fb + fs;
+    const buyRatio  = totalF > 0 ? fb / totalF : 0;
+
+    const prev2     = _prevMap[s.StockCode] ?? null;
+    const netM2     = prev2?.netM     ?? null;
+    const buyRatio2 = prev2?.buyRatio ?? 0;
+
+    const konsisten2H   = buyRatio >= 0.55 && buyRatio2 >= 0.55;
+    const totalDays2    = _prevDay ? 2 : 1;
+    const asingAkumDays = (buyRatio >= 0.55 ? 1 : 0) + (buyRatio2 >= 0.55 ? 1 : 0);
+    const spreadPct     = close > 0 ? +(_frac(close)/close*100).toFixed(2) : 99;
+
+    const closeExact    = close === high && chgPct > 0;
+    const closeNearHigh = high > 0 && (high - close) / high <= 0.02;
+
+    // Variabel bersama ARA + Swing
+    const mktcap      = listed * close / 1e12;
+    const offerKosong = offer === 0;
+    const offerTipis  = bid > 0 && offer > 0 && offer < bid * 0.3;
+    const _prevData   = _prevDay ? (dayData[_prevDay]?.data || []) : [];
+    const _prevStock  = _prevData.find(x => x.StockCode === s.StockCode);
+    const volPrev     = _prevStock?.Volume || 0;
+    const volSpike    = volPrev > 1000 ? vol / volPrev : 0;
+
+        // ── ARA CANDIDATE (Logic v3) ────────────────────────────────
+    do {
+      const araLimit    = close < 200 ? 35 : close <= 5000 ? 25 : 20;
+      const offerOk     = offerKosong || offerTipis;
+      const closeSignal = closeExact || closeNearHigh;
+
+      // Cek apakah kemarin sudah ARA
+      const prevClose  = _prevStock?.Close    || 0;
+      const prevPrev   = _prevStock?.Previous || 0;
+      const araLimitY  = prevPrev < 200 ? 35 : prevPrev <= 5000 ? 25 : 20;
+      const kemarin_ARA = prevPrev > 0 && prevClose > 0
+        && ((prevClose - prevPrev) / prevPrev * 100) >= araLimitY - 0.2;
+      if (kemarin_ARA) break;
+      if (mktcap > 10) break;
+      if (close < 51 || close > 10000) break;
+      if (!offerOk || !closeSignal || bid <= 0) break;
+      if (chgPct >= araLimit - 0.5) break;
+      if (chgPct < -5) break;
+      // buyRatio minimal 55% (eliminasi yang 50/50)
+      if (buyRatio < 0.55) break;
+      // Akumulasi 2H harus positif
+      const totalNet2H = netM + (netM2 || 0);
+      if (totalNet2H <= 0) break;
+      // Jika kemarin jual tapi hari ini beli belum balik modal → skip
+      if ((netM2 || 0) < 0 && netM > 0 && netM <= Math.abs(netM2 || 0)) break;
+      // Jika kemarin beli tapi hari ini jual lebih besar → skip
+      if ((netM2 || 0) > 0 && netM < 0 && Math.abs(netM) > (netM2 || 0)) break;
+      const jaluRetail = offerKosong && closeExact && vol > 500_000;
+
+      let sc = 0;
+      if (offerKosong)            sc += 4;
+      else if (offerTipis)        sc += 2;
+      if (closeExact)             sc += 2;
+      else if (closeNearHigh)     sc += 1;
+      if      (buyRatio >= 0.7)   sc += 3;
+      else if (buyRatio >= 0.55)  sc += 2;
+      else if (buyRatio >= 0.4)   sc += 1;
+      if (konsisten2H)            sc += 2;
+      else if (buyRatio2 >= 0.55) sc += 1;
+      if      (volSpike >= 3)     sc += 2;
+      else if (volSpike >= 2)     sc += 1;
+      if      (netM > 100)        sc += 2;
+      else if (netM > 10)         sc += 1;
+      if      (bid > 5_000_000)   sc += 2;
+      else if (bid > 1_000_000)   sc += 1;
+      if (chgPct >= 5)            sc += 1;
+      if (sc < 4) break;
+
+      _araC.push({
+        kode: s.StockCode, nama: s.StockName||'',
+        closePrice: close, chgPct: +chgPct.toFixed(2),
+        netForeignM: +netM.toFixed(2), netForeignM2: netM2!==null?+netM2.toFixed(2):null,
+        buyRatio: +buyRatio.toFixed(2), buyRatio2: +buyRatio2.toFixed(2),
+        bidVol: bid, offerVol: offer, closeEqHigh: closeExact, spreadPct,
+        score: Math.min(sc,10), asingAkumDays, totalDays: totalDays2,
+        volSpike: +volSpike.toFixed(1), mktcapT: +mktcap.toFixed(2),
+      });
+    } while(false);
+
+    // ── STEALTH ACCUMULATION — akumulasi besar saat harga turun/stagnan ──
+    do {
+      if (netM < 750) break;                      // akumulasi min 750M
+      if ((netM + (netM2||0)) <= 0) break;        // total 2H harus positif
+      if (buyRatio < 0.65) break;                 // asing dominan beli ≥65%
+      if (mktcap > 10) break;                     // max 10T
+      if (close < 51 || close > 10000) break;
+      if (chgPct < -15 || chgPct >= 5) break;     // batas wajar
+      if (spreadPct > 2) break;                   // harus likuid
+      if (closeExact || closeNearHigh) break;     // sudah ada di jalur normal
+
+      // Cek kemarin ARA
+      const _pC2 = _prevStock?.Close    || 0;
+      const _pP2 = _prevStock?.Previous || 0;
+      const _aL2 = _pP2<200?35:_pP2<=5000?25:20;
+      if (_pP2>0 && _pC2>0 && (_pC2-_pP2)/_pP2*100 >= _aL2-0.2) break;
+
+      let sc2=0;
+      if      (netM>=5000) sc2+=5;
+      else if (netM>=3000) sc2+=4;
+      else if (netM>=2000) sc2+=3;
+      else if (netM>=1000) sc2+=2;
+      else                 sc2+=1;
+      if      (konsisten2H)                   sc2+=3;
+      else if ((netM2||0)>500)                sc2+=2;
+      else if (buyRatio2>=0.55)               sc2+=1;
+      if      (buyRatio>=0.85)                sc2+=2;
+      else if (buyRatio>=0.65)                sc2+=1;
+      if      ((netM+(netM2||0))>=5000)       sc2+=2;
+      else if ((netM+(netM2||0))>=2000)       sc2+=1;
+      if (sc2 < 4) break;
+
+      _araC.push({
+        kode: s.StockCode, nama: s.StockName||'',
+        closePrice: close, chgPct: +chgPct.toFixed(2),
+        netForeignM: +netM.toFixed(2), netForeignM2: netM2!==null?+netM2.toFixed(2):null,
+        buyRatio: +buyRatio.toFixed(2), buyRatio2: +buyRatio2.toFixed(2),
+        bidVol: bid, offerVol: offer, closeEqHigh: false, spreadPct,
+        score: Math.min(sc2,10), asingAkumDays, totalDays: totalDays2,
+        volSpike: +volSpike.toFixed(1), mktcapT: +mktcap.toFixed(2),
+        jalurStealth: true,
+      });
+    } while(false);
+
+    // ── SWING BIG CAP — MID CAP ASING AKUMULASI BESAR ──────────
+    // mktcap 0.5T–12T, buyR≥70%, net>1500M, chg>-10%, spread≤3%
+    if (mktcap >= 0.5 && mktcap <= 15
+        && netM > 1500
+        && buyRatio >= 0.70
+        && spreadPct <= 3
+        && chgPct > -10) {
+
+      let sc = 0;
+      // Score dari besaran net asing
+      if      (netM > 10000) sc += 5;
+      else if (netM > 5000)  sc += 4;
+      else if (netM > 3000)  sc += 3;
+      else if (netM > 2000)  sc += 2;
+      else                   sc += 1;
+      // Konsistensi 2H
+      if      (konsisten2H)                   sc += 3;
+      else if (netM2 !== null && netM2 > 500) sc += 2;
+      else if (buyRatio2 >= 0.55)             sc += 1;
+      // Dominan beli
+      if      (buyRatio >= 0.85) sc += 2;
+      else if (buyRatio >= 0.70) sc += 1;
+
+      _daytrade.push({
+        kode: s.StockCode, nama: s.StockName||'',
+        closePrice: close, chgPct: +chgPct.toFixed(2),
+        netForeignM: +netM.toFixed(2), netForeignM2: netM2!==null?+netM2.toFixed(2):null,
+        buyRatio: +buyRatio.toFixed(2), buyRatio2: +buyRatio2.toFixed(2),
+        mktcapT: +mktcap.toFixed(1),
+        bidVol: bid, offerVol: offer, spreadPct,
+        score: Math.min(sc,10), asingAkumDays, totalDays: totalDays2,
+        swingTargetPct: netM>5000?8:netM>3000?6:netM>2000?5:4,
+      });
+    }
+  });
+
+  _araC.sort((a,b)    => b.score - a.score);
+  _daytrade.sort((a,b) => b.score - a.score);
+  const momentum_data = {
+    ara_candidates: _araC.slice(0,10),
+    swing_bigcap:   _daytrade.slice(0,10),
+  };
+  addLog('devLog', `🎯 Momentum: ${momentum_data.ara_candidates.length} ARA candidate, ${momentum_data.swing_bigcap.length} Day Trade Foreign Buy`, 'ok');
+  // ────────────────────────────────────────────────────────────────────────
+
+
+
+
+  window._araAnalysisResult = {
+    results,
+    filledDays,
+    dayDates: filledDays.map(d => dayData[d].date),
+    analyzedAt: new Date().toISOString(),
+    momentum_data,
+  };
+
+  // Enable save all
+  const saveAllBtn = document.getElementById('btnSaveAll');
+  if (saveAllBtn) {
+    saveAllBtn.disabled = false;
+    saveAllBtn.textContent = `💾 Save All (${results.length} saham) → Publish`;
+  }
+
+  showMsg('devSaveMsg', `✅ Analisis selesai: ${results.length} saham potensi ARA dari ${filledDays.length} hari data. Klik Save All untuk publish.`, 'ok');
+  } catch(e) {
+    addLog('devLog', '❌ Error di analyzeAll: ' + e.message, 'err');
+    showMsg('devSaveMsg', '❌ Error: ' + e.message, 'err');
+    console.error('analyzeAll error:', e);
+  }
+}
+
+// ── SAVE ALL ke Server ──────────────────────────────────
+async function saveAll() {
+  const saveBtn = document.getElementById('btnSaveAll');
+  if (!window._araAnalysisResult) {
+    showMsg('devSaveMsg', '⚠ Analisis dulu sebelum save', 'err'); return;
+  }
+  
+  const { results, filledDays, dayDates, momentum_data } = window._araAnalysisResult;
+
+  saveBtn.disabled = true;
+  saveBtn.textContent = '⏳ Menyimpan...';
+
+  const payload = {
+    date: dayDates[dayDates.length - 1] || new Date().toISOString().slice(0,10),
+    days_analyzed: filledDays.length,
+    day_dates: dayDates,
+    mode: filledDays.length === 1 ? '1-hari' : filledDays.length === 2 ? '2-hari' : '3-hari',
+    data: dayData[filledDays[filledDays.length - 1]]?.data || [],
+    multi_analysis: results.map(s => ({
+      kode: s.kode,
+      nama: s.nama,
+      totalNetM: s.totalNetM,
+      avgARA: s.avgARA,
+      consecutiveBuyDays: s.consecutiveBuyDays,
+      dayCount: s.dayCount,
+      lastClose: s.lastData?.close || 0,
+      lastChg: s.lastData?.chgPct || 0,
+      lastVol: s.lastData?.vol || 0,
+      lastSpread: s.lastData?.spreadPct || 0,
+      araScore: s.avgARA,
+      days: s.days,
+    })),
+    momentum_data, // dihitung otomatis oleh analyzeAll()
+  };
+
+  try {
+    const res = await fetch('./save_ara.php', {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const j = await res.json();
+    if (j.ok) {
+      showMsg('devSaveMsg', `✅ Tersimpan! ${results.length} saham ARA (${payload.mode}) sudah live untuk semua user.`, 'ok');
+      addLog('devLog', `✅ Saved: ${results.length} saham · Mode: ${payload.mode} · Tanggal: ${payload.date}`, 'ok');
+      saveBtn.textContent = `✅ Saved (${payload.mode})`;
+    } else {
+      throw new Error(j.msg || 'Error server');
+    }
+  } catch(e) {
+    showMsg('devSaveMsg', '❌ Gagal: ' + e.message, 'err');
+    addLog('devLog', '❌ ' + e.message, 'err');
+    saveBtn.disabled = false;
+    saveBtn.textContent = `💾 Save All → Publish`;
+  }
+}
+
+// ── Reset ─────────────────────────────────────────────────
+function confirmResetIDX() { document.getElementById('resetConfirmBox').style.display = 'block'; }
+function cancelResetIDX()  { document.getElementById('resetConfirmBox').style.display = 'none'; }
+
+async function doResetIDX() {
+  document.getElementById('resetConfirmBox').style.display = 'none';
+  // Clear localStorage
+  localStorage.removeItem(STORAGE_KEY);
+  dayData = { 1: null, 2: null, 3: null };
+  [1,2,3].forEach(d => clearDay(d));
+  
+  // Reset server
+  try {
+    await fetch('./save_ara.php', {
+      method:'POST', credentials:'include',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ date:'', data:[], stocks:[], reset:true })
+    });
+  } catch(e) {}
+  
+  showMsg('devSaveMsg', '✅ Data direset.', 'ok');
+  addLog('devLog', '🗑️ Data direset dari server dan browser', 'ok');
+  window._araAnalysisResult = null;
+  const saveBtn = document.getElementById('btnSaveAll');
+  if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = '💾 Save All → Publish ke User'; }
+}
+
+// ── Init ──────────────────────────────────────────────────
+// init sudah dipindah ke DOMContentLoaded utama di atas
+
+// ── Helpers ──────────────────────────────────────────────────
+function showMsg(id, msg, type) {
+  const el = document.getElementById(id);
+  el.textContent = msg; el.className = 'msg ' + type;
+  el.style.display = 'block';
+}
+function addLog(id, msg, type) {
+  const el  = document.getElementById(id);
+  const div = document.createElement('div');
+  div.className = 'log-line ' + type;
+  div.textContent = '[' + new Date().toLocaleTimeString('id-ID') + '] ' + msg;
+  el.appendChild(div);
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── Update DER Only ──────────────────────────────────────
+async function handleDerUpload(file) {
+  if (!file) return;
+  const msgEl = document.getElementById('der-msg');
+  const logEl = document.getElementById('der-log');
+  msgEl.textContent = '⏳ Mengupload dan memproses...';
+  msgEl.className = 'msg info';
+  msgEl.style.display = 'block';
+  logEl.style.display = 'block';
+  logEl.innerHTML = '';
+
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('./update_der.php', {
+      method: 'POST',
+      credentials: 'include',
+      body: fd
+    });
+    const j = await res.json();
+    if (j.ok) {
+      msgEl.textContent = j.msg;
+      msgEl.className = 'msg ok';
+      addLog('der-log', `✅ DER updated: ${j.der_updated} saham`, 'ok');
+      addLog('der-log', `📊 DER di XLSX: ${j.der_in_xlsx} saham`, 'info');
+      if (j.not_found > 0) addLog('der-log', `⚠ Tidak cocok: ${j.not_found} saham`, 'err');
+      if (j.sample) addLog('der-log', `Sample: ${j.sample.join(' · ')}`, 'info');
+    } else {
+      msgEl.textContent = '❌ ' + j.msg;
+      msgEl.className = 'msg err';
+      addLog('der-log', '❌ ' + j.msg, 'err');
+    }
+  } catch(e) {
+    msgEl.textContent = '❌ Error: ' + e.message;
+    msgEl.className = 'msg err';
+  }
+}
+
+
+// ── Delisting management ──────────────────────────────────
+async function delistLoad() {
+  try {
+    const res = await fetch('./update_delisted.php', { credentials: 'include' });
+    const j   = await res.json();
+    if (!j.ok) return;
+    renderDelistTags(j.delisted || []);
+  } catch(e) {}
+}
+
+function renderDelistTags(list) {
+  const el = document.getElementById('delistTags');
+  if (!el) return;
+  if (!list.length) {
+    el.innerHTML = '<span style="font-family:var(--mono);font-size:.58rem;color:var(--dim);">Belum ada saham diblock</span>';
+    return;
+  }
+  el.innerHTML = list.map(k =>
+    `<span style="display:inline-flex;align-items:center;gap:4px;background:rgba(255,59,92,.12);border:1px solid rgba(255,59,92,.25);border-radius:6px;padding:3px 8px;font-family:var(--mono);font-size:.62rem;font-weight:700;color:var(--red);">
+      ${k}
+      <span onclick="delistRemove('${k}')" style="cursor:pointer;opacity:.7;font-size:.9rem;line-height:1;" title="Hapus">×</span>
+    </span>`
+  ).join('');
+}
+
+async function delistAdd() {
+  const inp  = document.getElementById('delistInput');
+  const kode = (inp.value || '').trim().toUpperCase();
+  if (!kode || kode.length < 2) return;
+  inp.value = '';
+  try {
+    const res = await fetch('./update_delisted.php', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({action:'add', kode})
+    });
+    const j = await res.json();
+    showMsg('delistMsg', j.msg, j.ok ? 'ok' : 'err');
+    if (j.ok) renderDelistTags(j.delisted || []);
+  } catch(e) { showMsg('delistMsg', '❌ '+e.message, 'err'); }
+}
+
+async function delistRemove(kode) {
+  try {
+    const res = await fetch('./update_delisted.php', {
+      method: 'POST', credentials: 'include',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({action:'remove', kode})
+    });
+    const j = await res.json();
+    showMsg('delistMsg', j.msg, j.ok ? 'ok' : 'err');
+    if (j.ok) renderDelistTags(j.delisted || []);
+  } catch(e) {}
+}
+
+</script>
+</body>
+</html>

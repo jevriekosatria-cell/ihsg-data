@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>IHSG Screener — Analytics</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Syne:wght@700;800&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{background:#020810;color:#a8cfe0;font-family:'JetBrains Mono',monospace;font-size:13px;padding:24px;}
+h1{font-family:'Syne',sans-serif;font-size:1.4rem;color:#00c8ff;letter-spacing:2px;margin-bottom:4px;}
+.sub{font-size:.7rem;color:#4a7a90;margin-bottom:24px;}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px;}
+.card{background:#0d1c2a;border:1px solid rgba(0,200,255,.1);border-radius:10px;padding:16px;}
+.card-lbl{font-size:.6rem;color:#4a7a90;letter-spacing:2px;margin-bottom:6px;}
+.card-val{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:#00c8ff;}
+.card-sub{font-size:.6rem;color:#4a7a90;margin-top:3px;}
+.card.green .card-val{color:#00e5a0;}
+.card.purple .card-val{color:#9d78ff;}
+.card.yellow .card-val{color:#f5c518;}
+.section{margin-bottom:24px;}
+.section-title{font-size:.65rem;color:#4a7a90;letter-spacing:2px;margin-bottom:12px;padding-bottom:6px;border-bottom:1px solid rgba(0,200,255,.08);}
+table{width:100%;border-collapse:collapse;}
+th{text-align:left;font-size:.6rem;color:#4a7a90;letter-spacing:1px;padding:8px 10px;border-bottom:1px solid rgba(0,200,255,.08);}
+td{padding:8px 10px;border-bottom:1px solid rgba(255,255,255,.02);font-size:.75rem;}
+tr:hover td{background:rgba(0,200,255,.03);}
+.badge{display:inline-block;padding:2px 7px;border-radius:3px;font-size:.6rem;font-weight:700;}
+.b-g{background:rgba(0,229,160,.1);color:#00e5a0;}
+.b-c{background:rgba(0,200,255,.1);color:#00c8ff;}
+.bar-wrap{height:4px;background:rgba(0,200,255,.08);border-radius:2px;margin-top:8px;overflow:hidden;}
+.bar-fill{height:100%;background:linear-gradient(90deg,#00c8ff,#00e5a0);border-radius:2px;transition:width .5s;}
+.back{display:inline-flex;align-items:center;gap:6px;padding:7px 14px;background:rgba(0,200,255,.08);border:1px solid rgba(0,200,255,.2);border-radius:7px;color:#00c8ff;text-decoration:none;font-size:.75rem;margin-bottom:20px;}
+.refresh{padding:7px 14px;background:rgba(0,229,160,.08);border:1px solid rgba(0,229,160,.2);border-radius:7px;color:#00e5a0;font-size:.75rem;cursor:pointer;font-family:inherit;margin-left:8px;}
+</style>
+</head>
+<body>
+
+<a href="../index.html" class="back">← Back to Screener</a>
+<button class="refresh" onclick="loadStats()">↺ Refresh</button>
+
+<h1>📊 VISITOR ANALYTICS</h1>
+<div class="sub" id="last-update">Loading...</div>
+
+<!-- KPI Cards -->
+<div class="grid" id="kpi-grid">
+  <div class="card"><div class="card-lbl">TOTAL HITS</div><div class="card-val" id="k-total-hits">—</div><div class="card-sub">Semua kunjungan</div></div>
+  <div class="card green"><div class="card-lbl">UNIQUE VISITOR</div><div class="card-val" id="k-total-uniq">—</div><div class="card-sub">IP unik (all time)</div></div>
+  <div class="card yellow"><div class="card-lbl">HARI INI</div><div class="card-val" id="k-today-uniq">—</div><div class="card-sub" id="k-today-hits">—</div></div>
+  <div class="card"><div class="card-lbl">7 HARI</div><div class="card-val" id="k-week-uniq">—</div><div class="card-sub" id="k-week-hits">—</div></div>
+  <div class="card"><div class="card-lbl">30 HARI</div><div class="card-val" id="k-month-uniq">—</div><div class="card-sub" id="k-month-hits">—</div></div>
+  <div class="card purple"><div class="card-lbl">REGISTERED USER</div><div class="card-val" id="k-users">—</div><div class="card-sub">Total akun terdaftar</div></div>
+</div>
+
+<!-- Login vs Guest -->
+<div class="section">
+  <div class="section-title">LOGIN VS GUEST</div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;max-width:400px;">
+    <div class="card">
+      <div class="card-lbl">LOGGED IN</div>
+      <div class="card-val" id="k-loggedin" style="color:#00e5a0;">—</div>
+      <div class="bar-wrap"><div class="bar-fill" id="bar-loggedin" style="width:0%"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-lbl">GUEST</div>
+      <div class="card-val" id="k-guest" style="color:#9d78ff;">—</div>
+      <div class="bar-wrap"><div class="bar-fill" id="bar-guest" style="width:0%;background:linear-gradient(90deg,#9d78ff,#00c8ff)"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Daily trend -->
+<div class="section">
+  <div class="section-title">TREND 7 HARI TERAKHIR</div>
+  <table>
+    <thead><tr><th>TANGGAL</th><th>HITS</th><th>UNIQUE IP</th><th>GRAFIK</th></tr></thead>
+    <tbody id="daily-table"><tr><td colspan="4" style="color:#4a7a90;text-align:center;padding:20px;">Loading...</td></tr></tbody>
+  </table>
+</div>
+
+<!-- Registered users -->
+<div class="section">
+  <div class="section-title">DAFTAR USER TERDAFTAR</div>
+  <table>
+    <thead><tr><th>ID</th><th>USERNAME</th><th>EMAIL</th><th>DAFTAR</th><th>LOGIN TERAKHIR</th><th>STATUS</th></tr></thead>
+    <tbody id="users-table"><tr><td colspan="6" style="color:#4a7a90;text-align:center;padding:20px;">Loading...</td></tr></tbody>
+  </table>
+</div>
+
+<script>
+async function loadStats() {
+  document.getElementById('last-update').textContent = 'Memuat data...';
+  try {
+    const res  = await fetch('./tracker.php?action=stats', {credentials:'include'});
+    const data = await res.json();
+    if (!data.ok) { alert('Akses ditolak: ' + data.msg); return; }
+
+    // KPI — sesuaikan dengan format tracker.php
+    document.getElementById('k-total-hits').textContent  = fNum(data.total_hits);
+    document.getElementById('k-total-uniq').textContent  = fNum(data.unique_ip);
+    document.getElementById('k-today-uniq').textContent  = fNum((data.today||{}).unique);
+    document.getElementById('k-today-hits').textContent  = fNum((data.today||{}).hits) + ' hits hari ini';
+    document.getElementById('k-week-uniq').textContent   = fNum((data['7days']||{}).unique);
+    document.getElementById('k-week-hits').textContent   = fNum((data['7days']||{}).hits) + ' hits 7 hari';
+    document.getElementById('k-month-uniq').textContent  = fNum((data['30days']||{}).unique);
+    document.getElementById('k-month-hits').textContent  = fNum((data['30days']||{}).hits) + ' hits 30 hari';
+    document.getElementById('k-users').textContent       = fNum(data.total_users);
+
+    // Login vs Guest
+    const li = (data.login_vs_guest||{}).logged_in || 0;
+    const gu = (data.login_vs_guest||{}).guest || 0;
+    const tot = li + gu || 1;
+    document.getElementById('k-loggedin').textContent = fNum(li);
+    document.getElementById('k-guest').textContent    = fNum(gu);
+    document.getElementById('bar-loggedin').style.width = (li/tot*100) + '%';
+    document.getElementById('bar-guest').style.width    = (gu/tot*100) + '%';
+
+    // Daily trend
+    const trend = data.trend || [];
+    const maxHits = Math.max(...trend.map(d=>d.hits), 1);
+    document.getElementById('daily-table').innerHTML = trend.length
+      ? trend.reverse().map(d => `
+          <tr>
+            <td>${d.tanggal}</td>
+            <td>${fNum(d.hits)}</td>
+            <td>${fNum(d.unique_ip)}</td>
+            <td><div style="width:${Math.round(d.hits/maxHits*100)}%;height:4px;background:linear-gradient(90deg,#00c8ff,#00e5a0);border-radius:2px;"></div></td>
+          </tr>`).join('')
+      : '<tr><td colspan="4" style="color:#4a7a90;text-align:center;padding:16px;">Belum ada data</td></tr>';
+
+    document.getElementById('last-update').textContent = 'Update: ' + new Date().toLocaleString('id-ID');
+  } catch(e) {
+    document.getElementById('last-update').textContent = 'Error: ' + e.message;
+  }
+
+  // Load registered users
+  try {
+    const res2  = await fetch('./api_user.php?action=list_users', {credentials:'include'});
+    const data2 = await res2.json();
+    if (data2.ok) {
+      document.getElementById('users-table').innerHTML = data2.users.map(u => `
+        <tr>
+          <td>${u.id}</td>
+          <td style="color:#f0f8ff;font-weight:700;">${u.username}</td>
+          <td style="color:#a8cfe0;">${u.email}</td>
+          <td>${fDate(u.created_at)}</td>
+          <td>${fDate(u.last_login)}</td>
+          <td><span class="badge b-g">aktif</span></td>
+        </tr>`).join('');
+    }
+  } catch(e) {}
+}
+
+function fNum(n) { return Number(n||0).toLocaleString('id-ID'); }
+function fDate(d) { return d ? new Date(d).toLocaleDateString('id-ID') : '—'; }
+
+loadStats();
+</script>
+</body>
+</html>
